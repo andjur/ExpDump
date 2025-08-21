@@ -86,16 +86,11 @@ namespace ExpDump
             var res = new Dictionary<string, IntegrationInfo>(); // TKey is date/object/filter/duration combination; TValue is subs count
             foreach (string fileName in fileNames)
             {
-                var r = new Regex(@"(?<Path>.*?)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_filter_(?<Filter>.*?)_");
+                var r = new Regex(@"(?<Path>.*?)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_(filter_(?<Filter>.+?)_)?\d\d\d\d");
                 var match = r.Match(fileName);
-                if (!match.Success)
-                {
-                    // match with filter failed, try to match without filter
-                    r = new Regex(@"(?<Path>.*?)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2})");
-                    match = r.Match(fileName);
-                }
                 if (match.Success)
                 {
+                    // we have a sub
                     var subInfo = new SubInfo()
                     {
                         Path = match.Groups["Path"].Value,
@@ -118,6 +113,7 @@ namespace ExpDump
 
                     if (!subInfo.IsBad)
                     {
+                        // we have a "good" (i.e. not BAD) sub
                         var key = String.Join(sep,
                             /* 0 */ subInfo.NormalizedExposureDate.ToString("yyyy-MM-dd"),
                             /* 1 */ subInfo.ObjectName,
@@ -125,6 +121,8 @@ namespace ExpDump
                             /* 3 */ subInfo.Filter,
                             /* 4 */ subInfo.ExposureDurationSeconds.ToString()
                         );
+
+                        // include/integrate sub into stats
                         if (res.ContainsKey(key))
                         {
                             res[key].SubsCount++;
