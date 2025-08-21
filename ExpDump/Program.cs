@@ -159,7 +159,7 @@ namespace ExpDump
                 "Sub Duration",
                 "Details"
             ));
-            foreach (var key in res.Keys)
+            foreach (var key in res.Keys.OrderBy(key => key))
             {
                 var k = key.Split(sep);
                 var integrationSeconds = int.Parse(k[4]) * res[key].SubsCount;
