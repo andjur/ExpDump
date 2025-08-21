@@ -98,7 +98,8 @@ namespace ExpDump
                         ExposureDurationStr = match.Groups["ExposureDuration"].Value,
                         Camera = match.Groups["Camera"].Value,
                         ExposureEndDateTimeStr = match.Groups["ExposureEndDateTime"].Value,
-                        Filter =String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
+                        Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
+                        Telescope = DetectTelescope(match.Groups["Path"].Value),
                     };
 
                     //Console.WriteLine(String.Join("; ",
@@ -119,7 +120,8 @@ namespace ExpDump
                             /* 1 */ subInfo.ObjectName,
                             /* 2 */ subInfo.Camera,
                             /* 3 */ subInfo.Filter,
-                            /* 4 */ subInfo.ExposureDurationSeconds.ToString()
+                            /* 4 */ subInfo.ExposureDurationSeconds.ToString(),
+                            /* 5 */ subInfo.Telescope
                         );
 
                         // include/integrate sub into stats
@@ -147,6 +149,7 @@ namespace ExpDump
             sb.AppendLine(String.Join(sbSep,
                 "Normalized Date",
                 "Object",
+                "Telescope",
                 "Camera",
                 "Filter",
                 "Start Time",
@@ -168,7 +171,8 @@ namespace ExpDump
                     String.Join(sbSep,
                         k[0], // Nomalized Date
                         k[1], // Object
-                        k[2], // Camera
+                        k[5], // Telescope
+                        NormalizeCamera(k[2]), // Camera
                         k[3], // Filter
                         res[key].StartDateTime.ToString("H:mm"), //res[key].StartDateTime.ToString("yyyy-MM-dd H:mm"),
                         res[key].EndDateTime.ToString("H:mm"), //res[key].EndDateTime.ToString("yyyy-MM-dd H:mm"),
@@ -186,6 +190,49 @@ namespace ExpDump
             }
 
             return sb.ToString();
+        }
+
+        private static string DetectTelescope(string path)
+        {
+            var res = "unknown_telescope";
+
+            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|AllSky)");
+            var match = r.Match(path);
+            if (match.Success)
+            {
+                res = match.Groups["Telescope"].Value;
+            }
+
+            r = new Regex(@"(?<Reducer>Hyperstar|0\.7x)", RegexOptions.IgnoreCase);
+            match = r.Match(path);
+            if (match.Success)
+            {
+                var reducer = match.Groups["Reducer"].Value;
+                if (!String.IsNullOrWhiteSpace(reducer))
+                {
+                    res += "+" + reducer;
+                }
+            }
+
+            return res;
+        }
+
+        private static object NormalizeCamera(string camera)
+        {
+            var res = camera;
+            switch (camera)
+            {
+                case "533MC":
+                case "2600MM":
+                case "585MM":
+                    res += "-Pro";
+                    break;
+                case "174MM":
+                    res += "-Mini";
+                    break;
+            }
+
+            return res;
         }
 
         private static string Timestamp()
@@ -213,6 +260,7 @@ namespace ExpDump
         public required string Camera { get; set; }
         public required string ExposureEndDateTimeStr { get; set; }
         public required string Filter { get; set; }
+        public required string Telescope { get; set; }
 
         public bool IsBad
         {
