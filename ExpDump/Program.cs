@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -82,7 +83,6 @@ namespace ExpDump
 
         private static string ProcessFileNamesList(IEnumerable<string> fileNames)
         {
-            var sep = "&&&";
             var res = new Dictionary<string, IntegrationInfo>(); // TKey is date/object/filter/duration combination; TValue is subs count
             foreach (string fileName in fileNames)
             {
@@ -102,44 +102,38 @@ namespace ExpDump
                         Telescope = DetectTelescope(match.Groups["Path"].Value),
                     };
 
-                    //Console.WriteLine(String.Join("; ",
-                    //    //(subInfo.IsBad ? "BAD: " : "") +
-                    //    subInfo.NormalizedExposureDate.ToString("yyyy-MM-dd"),
-                    //    subInfo.ObjectName,
-                    //    subInfo.ExposureStartDateTime.ToString("yyyy-MM-dd_HH.mm.ss"),
-                    //    subInfo.ExposureEndDateTime.ToString("yyyy-MM-dd_HH.mm.ss"),
-                    //    subInfo.ExposureDurationSeconds.ToString(),
-                    //    subInfo.Filter
-                    //));
-
                     if (!subInfo.IsBad)
                     {
                         // we have a "good" (i.e. not BAD) sub
-                        var key = String.Join(sep,
-                            /* 0 */ subInfo.NormalizedExposureDate.ToString("yyyy-MM-dd"),
-                            /* 1 */ subInfo.ObjectName,
-                            /* 2 */ subInfo.Camera,
-                            /* 3 */ subInfo.Filter,
-                            /* 4 */ subInfo.ExposureDurationSeconds.ToString(),
-                            /* 5 */ subInfo.Telescope
-                        );
+                        var integrationKey = new IntegrationKey() {
+                            NormalizedExposureDate = subInfo.NormalizedExposureDate,
+                            ObjectName = subInfo.ObjectName,
+                            Camera = subInfo.Camera,
+                            Filter = subInfo.Filter,
+                            ExposureDurationSeconds = subInfo.ExposureDurationSeconds,
+                            Telescope = subInfo.Telescope,
+                        };
 
                         // include/integrate sub into stats
+                        var key = integrationKey.ToString();
                         if (res.ContainsKey(key))
                         {
-                            res[key].SubsCount++;
-                            if (subInfo.ExposureStartDateTime < res[key].StartDateTime)
-                                res[key].StartDateTime = subInfo.ExposureStartDateTime;
-                            if (subInfo.ExposureEndDateTime > res[key].EndDateTime)
-                                res[key].EndDateTime = subInfo.ExposureEndDateTime;
+                            var integrationInfo = res[key];
+                            integrationInfo.SubsCount++;
+                            if (subInfo.ExposureStartDateTime < integrationInfo.StartDateTime)
+                                integrationInfo.StartDateTime = subInfo.ExposureStartDateTime;
+                            if (subInfo.ExposureEndDateTime > integrationInfo.EndDateTime)
+                                integrationInfo.EndDateTime = subInfo.ExposureEndDateTime;
                         }
                         else
+                        {
                             res[key] = new IntegrationInfo()
                             {
                                 SubsCount = 1,
                                 StartDateTime = subInfo.ExposureStartDateTime,
                                 EndDateTime = subInfo.ExposureEndDateTime,
                             };
+                        }
                     }
                 }
             }
@@ -161,28 +155,29 @@ namespace ExpDump
             ));
             foreach (var key in res.Keys.OrderBy(key => key))
             {
-                var k = key.Split(sep);
-                var integrationSeconds = int.Parse(k[4]) * res[key].SubsCount;
+                var k = IntegrationKey.FromString(key);
+                var integrationInfo = res[key];
+                var integrationSeconds = k.ExposureDurationSeconds * integrationInfo.SubsCount;
                 var integrationHours = integrationSeconds / 3600;
                 var integrationMinutesFracion = (integrationSeconds - integrationHours * 3600) / 60;
-                var idleTimeSeconds = (res[key].EndDateTime - res[key].StartDateTime).TotalSeconds - integrationSeconds;
+                var idleTimeSeconds = (integrationInfo.EndDateTime - integrationInfo.StartDateTime).TotalSeconds - integrationSeconds;
                 //Console.WriteLine(
                 sb.AppendLine(
                     String.Join(sbSep,
-                        k[0], // Nomalized Date
-                        k[1], // Object
-                        k[5], // Telescope
-                        NormalizeCamera(k[2]), // Camera
-                        k[3], // Filter
-                        res[key].StartDateTime.ToString("H:mm"), //res[key].StartDateTime.ToString("yyyy-MM-dd H:mm"),
-                        res[key].EndDateTime.ToString("H:mm"), //res[key].EndDateTime.ToString("yyyy-MM-dd H:mm"),
-                                                               //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
+                        k.NormalizedExposureDate.ToString("yyyy-MM-dd"),
+                        k.ObjectName,
+                        k.Telescope,
+                        NormalizeCamera(k.Camera),
+                        k.Filter,
+                        integrationInfo.StartDateTime.ToString("H:mm"), //integrationInfo.StartDateTime.ToString("yyyy-MM-dd H:mm"),
+                        integrationInfo.EndDateTime.ToString("H:mm"), //integrationInfo.EndDateTime.ToString("yyyy-MM-dd H:mm"),
+                                                                      //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
                         integrationHours.ToString() + ":" + integrationMinutesFracion.ToString("D2"),
-                        res[key].SubsCount.ToString(),
-                        k[4], // ExposureDurationSeconds
+                        integrationInfo.SubsCount.ToString(),
+                        k.ExposureDurationSeconds,
                         String.Join(" ",
-                            k[3], // Filter
-                            res[key].SubsCount.ToString() + "x" + k[4] + "s",
+                            k.Filter,
+                            integrationInfo.SubsCount.ToString() + "x" + k.ExposureDurationSeconds + "s",
                             "(" + integrationHours.ToString() + ":" + integrationMinutesFracion.ToString("D2") + ")"
                         )
                     )
@@ -333,11 +328,11 @@ namespace ExpDump
             }
         }
 
-        public DateTime NormalizedExposureDate
+        public DateOnly NormalizedExposureDate
         {
             get
             {
-                var res = new DateTime(
+                var res = new DateOnly(
                     ExposureStartDateTime.Year,
                     ExposureStartDateTime.Month,
                     ExposureStartDateTime.Day);
@@ -348,6 +343,48 @@ namespace ExpDump
 
                 return res;
             }
+        }
+
+        public override int GetHashCode() => (
+            NormalizedExposureDate,
+            ObjectName,
+            Camera,
+            Filter,
+            ExposureDurationSeconds,
+            Telescope
+        ).GetHashCode();
+    }
+
+    internal class IntegrationKey
+    {
+        public required DateOnly NormalizedExposureDate { get; set; }
+        public required string ObjectName { get; set; }
+        public required string Camera { get; set; }
+        public required string Filter { get; set; }
+        public required int ExposureDurationSeconds { get; set; }
+        public required string Telescope { get; set; }
+
+        private static readonly string _sep = "&&&";
+        public override string ToString() => String.Join(_sep,
+                            /* 0 */ NormalizedExposureDate.ToString("yyyy-MM-dd"),
+                            /* 1 */ ObjectName,
+                            /* 2 */ Camera,
+                            /* 3 */ Filter,
+                            /* 4 */ ExposureDurationSeconds.ToString(),
+                            /* 5 */ Telescope
+        );
+        public static IntegrationKey FromString(string key)
+        {
+            var k = key.Split(_sep);
+            return new IntegrationKey()
+            {
+                NormalizedExposureDate = DateOnly.FromDateTime(DateTime.ParseExact(k[0], "yyyy-MM-dd", CultureInfo.InvariantCulture)),
+                ObjectName = k[1],
+                Camera = k[2],
+                Filter = k[3],
+                ExposureDurationSeconds = int.Parse(k[4]),
+                Telescope = k[5]
+            };
         }
     }
 
