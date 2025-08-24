@@ -83,7 +83,7 @@ namespace ExpDump
 
         private static string ProcessFileNamesList(IEnumerable<string> fileNames)
         {
-            var res = new Dictionary<string, IntegrationInfo>(); // TKey is date/object/filter/duration combination; TValue is subs count
+            var shootings = new Dictionary<string, ShootingInfo>(); // TKey is shooting (i.e. date/object/telescope/camera/filter/exp_duration combination)
             foreach (string fileName in fileNames)
             {
                 var r = new Regex(@"(?<Path>.*?)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_(filter_(?<Filter>.+?)_)?\d\d\d\d");
@@ -105,7 +105,7 @@ namespace ExpDump
                     if (!subInfo.IsBad)
                     {
                         // we have a "good" (i.e. not BAD) sub
-                        var integrationKey = new IntegrationKey() {
+                        var shootingKey = new ShootingKey() {
                             NormalizedExposureDate = subInfo.NormalizedExposureDate,
                             ObjectName = subInfo.ObjectName,
                             Camera = subInfo.Camera,
@@ -114,20 +114,20 @@ namespace ExpDump
                             Telescope = subInfo.Telescope,
                         };
 
-                        // include/integrate sub into stats
-                        var key = integrationKey.ToString();
-                        if (res.ContainsKey(key))
+                        // include sub into shooting stats
+                        var key = shootingKey.ToString();
+                        if (shootings.ContainsKey(key))
                         {
-                            var integrationInfo = res[key];
-                            integrationInfo.SubsCount++;
-                            if (subInfo.ExposureStartDateTime < integrationInfo.StartDateTime)
-                                integrationInfo.StartDateTime = subInfo.ExposureStartDateTime;
-                            if (subInfo.ExposureEndDateTime > integrationInfo.EndDateTime)
-                                integrationInfo.EndDateTime = subInfo.ExposureEndDateTime;
+                            var shootingInfo = shootings[key];
+                            shootingInfo.SubsCount++;
+                            if (subInfo.ExposureStartDateTime < shootingInfo.StartDateTime)
+                                shootingInfo.StartDateTime = subInfo.ExposureStartDateTime;
+                            if (subInfo.ExposureEndDateTime > shootingInfo.EndDateTime)
+                                shootingInfo.EndDateTime = subInfo.ExposureEndDateTime;
                         }
                         else
                         {
-                            res[key] = new IntegrationInfo()
+                            shootings[key] = new ShootingInfo()
                             {
                                 SubsCount = 1,
                                 StartDateTime = subInfo.ExposureStartDateTime,
@@ -153,14 +153,14 @@ namespace ExpDump
                 "Sub Duration",
                 "Details"
             ));
-            foreach (var key in res.Keys.OrderBy(key => key))
+            foreach (var key in shootings.Keys.OrderBy(key => key))
             {
-                var k = IntegrationKey.FromString(key);
-                var integrationInfo = res[key];
-                var integrationSeconds = k.ExposureDurationSeconds * integrationInfo.SubsCount;
-                var integrationHours = integrationSeconds / 3600;
-                var integrationMinutesFracion = (integrationSeconds - integrationHours * 3600) / 60;
-                var idleTimeSeconds = (integrationInfo.EndDateTime - integrationInfo.StartDateTime).TotalSeconds - integrationSeconds;
+                var k = ShootingKey.FromString(key);
+                var shootingInfo = shootings[key];
+                var shootingSeconds = k.ExposureDurationSeconds * shootingInfo.SubsCount;
+                var shootingHours = shootingSeconds / 3600;
+                var shootingMinutesFracion = (shootingSeconds - shootingHours * 3600) / 60;
+                var idleTimeSeconds = (shootingInfo.EndDateTime - shootingInfo.StartDateTime).TotalSeconds - shootingSeconds;
                 //Console.WriteLine(
                 sb.AppendLine(
                     String.Join(sbSep,
@@ -169,16 +169,16 @@ namespace ExpDump
                         k.Telescope,
                         NormalizeCamera(k.Camera),
                         k.Filter,
-                        integrationInfo.StartDateTime.ToString("H:mm"), //integrationInfo.StartDateTime.ToString("yyyy-MM-dd H:mm"),
-                        integrationInfo.EndDateTime.ToString("H:mm"), //integrationInfo.EndDateTime.ToString("yyyy-MM-dd H:mm"),
-                                                                      //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
-                        integrationHours.ToString() + ":" + integrationMinutesFracion.ToString("D2"),
-                        integrationInfo.SubsCount.ToString(),
+                        shootingInfo.StartDateTime.ToString("H:mm"), //shootingInfo.StartDateTime.ToString("yyyy-MM-dd H:mm"),
+                        shootingInfo.EndDateTime.ToString("H:mm"), //shootingInfo.EndDateTime.ToString("yyyy-MM-dd H:mm"),
+                                                                   //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
+                        shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2"),
+                        shootingInfo.SubsCount.ToString(),
                         k.ExposureDurationSeconds,
                         String.Join(" ",
                             k.Filter,
-                            integrationInfo.SubsCount.ToString() + "x" + k.ExposureDurationSeconds + "s",
-                            "(" + integrationHours.ToString() + ":" + integrationMinutesFracion.ToString("D2") + ")"
+                            shootingInfo.SubsCount.ToString() + "x" + k.ExposureDurationSeconds + "s",
+                            "(" + shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2") + ")"
                         )
                     )
                 );
@@ -355,7 +355,7 @@ namespace ExpDump
         ).GetHashCode();
     }
 
-    internal class IntegrationKey
+    internal class ShootingKey
     {
         public required DateOnly NormalizedExposureDate { get; set; }
         public required string ObjectName { get; set; }
@@ -373,10 +373,10 @@ namespace ExpDump
                             /* 4 */ ExposureDurationSeconds.ToString(),
                             /* 5 */ Telescope
         );
-        public static IntegrationKey FromString(string key)
+        public static ShootingKey FromString(string key)
         {
             var k = key.Split(_sep);
-            return new IntegrationKey()
+            return new ShootingKey()
             {
                 NormalizedExposureDate = DateOnly.FromDateTime(DateTime.ParseExact(k[0], "yyyy-MM-dd", CultureInfo.InvariantCulture)),
                 ObjectName = k[1],
@@ -388,7 +388,7 @@ namespace ExpDump
         }
     }
 
-    internal class IntegrationInfo
+    internal class ShootingInfo
     {
         public int SubsCount { get; set; }
         public DateTime StartDateTime { get; set; }
