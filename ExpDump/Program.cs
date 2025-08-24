@@ -100,6 +100,7 @@ namespace ExpDump
                         ExposureEndDateTimeStr = match.Groups["ExposureEndDateTime"].Value,
                         Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
                         Telescope = DetectTelescope(match.Groups["Path"].Value),
+                        Session = GetSession(match.Groups["Path"].Value),
                     };
 
                     if (!subInfo.IsBad)
@@ -112,6 +113,7 @@ namespace ExpDump
                             Filter = subInfo.Filter,
                             ExposureDurationSeconds = subInfo.ExposureDurationSeconds,
                             Telescope = subInfo.Telescope,
+                            Session = subInfo.Session,
                         };
 
                         // include sub into shooting stats
@@ -151,7 +153,8 @@ namespace ExpDump
                 "Total Time",
                 "Subs Count",
                 "Sub Duration",
-                "Details"
+                "Details",
+                "Session"
             ));
             foreach (var key in shootings.Keys.OrderBy(key => key))
             {
@@ -179,7 +182,8 @@ namespace ExpDump
                             k.Filter,
                             shootingInfo.SubsCount.ToString() + "x" + k.ExposureDurationSeconds + "s",
                             "(" + shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2") + ")"
-                        )
+                        ),
+                        k.Session
                     )
                 );
             }
@@ -207,6 +211,20 @@ namespace ExpDump
                 {
                     res += "+" + reducer;
                 }
+            }
+
+            return res;
+        }
+
+        private static string GetSession(string path)
+        {
+            var res = "unknown_session";
+
+            var r = new Regex(@"\\\d\d\d\d\\\d\d\d\d-\d\d-\d\d\s+-\s+(?<Session>.*?)\\");
+            var match = r.Match(path);
+            if (match.Success)
+            {
+                res = match.Groups["Session"].Value;
             }
 
             return res;
@@ -256,6 +274,7 @@ namespace ExpDump
         public required string ExposureEndDateTimeStr { get; set; }
         public required string Filter { get; set; }
         public required string Telescope { get; set; }
+        public required string Session { get; set; }
 
         public bool IsBad
         {
@@ -363,6 +382,7 @@ namespace ExpDump
         public required string Filter { get; set; }
         public required int ExposureDurationSeconds { get; set; }
         public required string Telescope { get; set; }
+        public required string Session { get; set; }
 
         private static readonly string _sep = "&&&";
         public override string ToString() => String.Join(_sep,
@@ -371,7 +391,8 @@ namespace ExpDump
                             /* 2 */ Camera,
                             /* 3 */ Filter,
                             /* 4 */ ExposureDurationSeconds.ToString(),
-                            /* 5 */ Telescope
+                            /* 5 */ Telescope,
+                            /* 6 */ Session
         );
         public static ShootingKey FromString(string key)
         {
@@ -383,7 +404,8 @@ namespace ExpDump
                 Camera = k[2],
                 Filter = k[3],
                 ExposureDurationSeconds = int.Parse(k[4]),
-                Telescope = k[5]
+                Telescope = k[5],
+                Session = k[6],
             };
         }
     }
