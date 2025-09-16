@@ -94,12 +94,12 @@ namespace ExpDump
                     var subInfo = new SubInfo()
                     {
                         Path = match.Groups["Path"].Value,
-                        ObjectName = match.Groups["ObjectName"].Value,
+                        ObjectName = NormalizeObjectName(match.Groups["ObjectName"].Value),
                         ExposureDurationStr = match.Groups["ExposureDuration"].Value,
                         Camera = match.Groups["Camera"].Value,
                         ExposureEndDateTimeStr = match.Groups["ExposureEndDateTime"].Value,
                         Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
-                        Telescope = DetectTelescope(match.Groups["Path"].Value),
+                        Telescope = DetectTelescope(match.Groups["Path"].Value, match.Groups["ExposureEndDateTime"].Value),
                         Session = GetSession(match.Groups["Path"].Value),
                     };
 
@@ -191,7 +191,31 @@ namespace ExpDump
             return sb.ToString();
         }
 
-        private static string DetectTelescope(string path)
+        private static string NormalizeObjectName(string name)
+        {
+            // SPECIAL CASE: Caldwell catalog object -> normalize name (special treatment to avoid confusion with "C" comets)
+            var caldwellRegex = new Regex(@"^(?<CaldwellObject>C)\s*?(?<CatalogNumber>\d+)$", RegexOptions.IgnoreCase);
+            var caldwellMatch = caldwellRegex.Match(name);
+            if (caldwellMatch.Success)
+                return caldwellMatch.Groups["CaldwellObject"].Value.ToUpper() + " " + caldwellMatch.Groups["CatalogNumber"].Value;
+
+            // SPECIAL CASE: comets - do NOT normalize, keep original name
+            //var cometRegex = new Regex(@".*?(?<Type>C|P|I)(\s*|-).*", RegexOptions.IgnoreCase);
+            //var cometMatch = cometRegex.Match(name);
+            //if (cometMatch.Success)
+            //    return name;
+
+            // catalog object -> normalize name
+            var r = new Regex(@"^(?<Catalog>M|NGC|IC|LDN|LBN|SH)\s*(?<CatalogNumber>.+)", RegexOptions.IgnoreCase);
+            var match = r.Match(name);
+            if (match.Success)
+                return match.Groups["Catalog"].Value.ToUpper() + " " + match.Groups["CatalogNumber"].Value;
+
+            // unrecognized object -> keep original name
+            return name;
+        }
+
+        private static string DetectTelescope(string path, string exposureEndDateTime)
         {
             var res = "unknown_telescope";
 
@@ -201,6 +225,8 @@ namespace ExpDump
             {
                 res = match.Groups["Telescope"].Value;
             }
+            else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
+                res = "C9.25"; // SPECIAL CASE: before 2024-12-25 only C9.25 was available
 
             r = new Regex(@"(?<Reducer>Hyperstar|0\.7x)", RegexOptions.IgnoreCase);
             match = r.Match(path);
@@ -332,18 +358,24 @@ namespace ExpDump
             }
         }
 
+        public static DateTime ExtractExposureDateTime(string exposureDateTimeStr)
+        {
+            return
+                new DateTime(
+                    int.Parse(exposureDateTimeStr.Substring(0, 4)),
+                    int.Parse(exposureDateTimeStr.Substring(4, 2)),
+                    int.Parse(exposureDateTimeStr.Substring(6, 2)),
+                    int.Parse(exposureDateTimeStr.Substring(9, 2)),
+                    int.Parse(exposureDateTimeStr.Substring(11, 2)),
+                    int.Parse(exposureDateTimeStr.Substring(13, 2))
+                );
+        }
+
         public DateTime ExposureEndDateTime
         {
             get
             {
-                return new DateTime(
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(0, 4)),
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(4, 2)),
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(6, 2)),
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(9, 2)),
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(11, 2)),
-                    int.Parse(this.ExposureEndDateTimeStr.Substring(13, 2))
-                );
+                return ExtractExposureDateTime(this.ExposureEndDateTimeStr);
             }
         }
 
