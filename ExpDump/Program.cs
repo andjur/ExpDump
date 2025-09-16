@@ -95,7 +95,7 @@ namespace ExpDump
                     {
                         Path = match.Groups["Path"].Value,
                         ObjectName = NormalizeObjectName(match.Groups["ObjectName"].Value),
-                        ExposureDurationStr = match.Groups["ExposureDuration"].Value,
+                        ExposureDurationStr = match.Groups["ExposureDuration"].Value.Replace(".0ms", "ms").Replace(".0s", "s"),
                         Camera = match.Groups["Camera"].Value,
                         ExposureEndDateTimeStr = match.Groups["ExposureEndDateTime"].Value,
                         Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
@@ -111,7 +111,7 @@ namespace ExpDump
                             ObjectName = subInfo.ObjectName,
                             Camera = subInfo.Camera,
                             Filter = subInfo.Filter,
-                            ExposureDurationSeconds = subInfo.ExposureDurationSeconds,
+                            ExposureDurationStr = subInfo.ExposureDurationStr,
                             Telescope = subInfo.Telescope,
                             Session = subInfo.Session,
                         };
@@ -160,7 +160,7 @@ namespace ExpDump
             {
                 var k = ShootingKey.FromString(key);
                 var shootingInfo = shootings[key];
-                var shootingSeconds = k.ExposureDurationSeconds * shootingInfo.SubsCount;
+                var shootingSeconds = k.ExposureDurationMilliseconds  * shootingInfo.SubsCount / 1000;
                 var shootingHours = shootingSeconds / 3600;
                 var shootingMinutesFracion = (shootingSeconds - shootingHours * 3600) / 60;
                 var idleTimeSeconds = (shootingInfo.EndDateTime - shootingInfo.StartDateTime).TotalSeconds - shootingSeconds;
@@ -177,10 +177,10 @@ namespace ExpDump
                                                                    //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
                         shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2"),
                         shootingInfo.SubsCount.ToString(),
-                        k.ExposureDurationSeconds,
+                        k.ExposureDurationStr,
                         String.Join(" ",
                             k.Filter,
-                            shootingInfo.SubsCount.ToString() + "x" + k.ExposureDurationSeconds + "s",
+                            shootingInfo.SubsCount.ToString() + "x" + k.ExposureDurationStr,
                             "(" + shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2") + ")"
                         ),
                         k.Session
@@ -331,32 +331,34 @@ namespace ExpDump
             }
         }
 
-        public int ExposureDurationSeconds
+        public decimal ExposureDurationMilliseconds
         {
             get
             {
                 //var d = decimal.Parse(this.ExposureDurationStr.TrimEnd('s'));
                 //return Convert.ToInt32(d);
 
-                var r = new Regex(@"(?<seconds>\d+)");
-                var match = r.Match(this.ExposureDurationStr);
-                if (match.Success)
+                var secondsRegex = new Regex(@"(?<seconds>\d+)s");
+                var secondsMatch = secondsRegex.Match(this.ExposureDurationStr);
+                if (secondsMatch.Success)
                 {
-                    if (int.TryParse(match.Groups["seconds"].Value, out int res))
+                    if (int.TryParse(secondsMatch.Groups["seconds"].Value, out int res))
                         return res;
                 }
 
-                return 0;
+                var millisecondsRegex = new Regex(@"(?<milliseconds>\d+)ms");
+                var millisecondsMatch = millisecondsRegex.Match(this.ExposureDurationStr);
+                if (millisecondsMatch.Success)
+                {
+                    if (decimal.TryParse(millisecondsMatch.Groups["milliseconds"].Value, out decimal res))
+                        return res/1000;
+                }
+
+                throw new Exception("Could not parse exposure duration \"" + this.ExposureDurationStr + "\".");
             }
         }
 
-        public DateTime ExposureStartDateTime
-        {
-            get
-            {
-                return ExposureEndDateTime.AddSeconds(-1 * this.ExposureDurationSeconds);
-            }
-        }
+        public DateTime ExposureStartDateTime => ExposureEndDateTime.AddMilliseconds(-1 * (double)this.ExposureDurationMilliseconds);
 
         public static DateTime ExtractExposureDateTime(string exposureDateTimeStr)
         {
@@ -401,7 +403,7 @@ namespace ExpDump
             ObjectName,
             Camera,
             Filter,
-            ExposureDurationSeconds,
+            ExposureDurationStr,
             Telescope
         ).GetHashCode();
     }
@@ -412,9 +414,35 @@ namespace ExpDump
         public required string ObjectName { get; set; }
         public required string Camera { get; set; }
         public required string Filter { get; set; }
-        public required int ExposureDurationSeconds { get; set; }
+        public required string ExposureDurationStr { get; set; }
         public required string Telescope { get; set; }
         public required string Session { get; set; }
+        public int ExposureDurationMilliseconds
+        {
+            get
+            {
+                var dur = this.ExposureDurationStr.ToLower();
+
+                if (dur.EndsWith("ms"))
+                {
+                    return 
+                        (int)decimal.Parse(dur
+                            .TrimEnd('s')
+                            .TrimEnd('m')
+                        );
+                }
+
+                if (dur.EndsWith("s"))
+                {
+                    return
+                        (int)decimal.Parse(dur
+                            .TrimEnd('s')
+                        ) * 1000;
+                }
+
+                throw new Exception("Unrecognized exposure time: " + dur);
+            }
+        }
 
         private static readonly string _sep = "&&&";
         public override string ToString() => String.Join(_sep,
@@ -422,7 +450,7 @@ namespace ExpDump
                             /* 1 */ ObjectName,
                             /* 2 */ Camera,
                             /* 3 */ Filter,
-                            /* 4 */ ExposureDurationSeconds.ToString(),
+                            /* 4 */ ExposureDurationStr,
                             /* 5 */ Telescope,
                             /* 6 */ Session
         );
@@ -435,7 +463,7 @@ namespace ExpDump
                 ObjectName = k[1],
                 Camera = k[2],
                 Filter = k[3],
-                ExposureDurationSeconds = int.Parse(k[4]),
+                ExposureDurationStr= k[4],
                 Telescope = k[5],
                 Session = k[6],
             };
