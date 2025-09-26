@@ -86,7 +86,7 @@ namespace ExpDump
             var shootings = new Dictionary<string, ShootingInfo>(); // TKey is shooting (i.e. date/object/telescope/camera/filter/exp_duration combination)
             foreach (string fileName in fileNames)
             {
-                var r = new Regex(@"(?<Path>.*?)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_(filter_(?<Filter>.+?)_)?\d\d\d\d");
+                var r = new Regex(@"(?<Path>.*\\)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_(filter_(?<Filter>.+?)_)?\d\d\d\d");
                 var match = r.Match(fileName);
                 if (match.Success)
                 {
