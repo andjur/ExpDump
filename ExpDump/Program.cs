@@ -67,7 +67,10 @@ namespace ExpDump
                 {
                     Console.WriteLine("Processing " + files.Count().ToString() + " file(s)...");
                     var res = ProcessFileNamesList(files);
-                    File.WriteAllText("__ExpDump_" + Timestamp() + ".csv", res);
+                    var resultsFile = Path.GetFullPath("__ExpDump_" + Timestamp() + ".csv");
+                    Console.WriteLine("Writing results to \"" + resultsFile + "\"...");
+                    File.WriteAllText(resultsFile, res);
+                    Console.WriteLine("Done writing results to \"" + resultsFile + "\".");
                     Console.WriteLine("Done processing " + files.Count().ToString() + " file(s).");
                 }
             }
@@ -148,7 +151,9 @@ namespace ExpDump
                 "Telescope",
                 "Camera",
                 "Filter",
+                "Start Date",
                 "Start Time",
+                "End Date",
                 "End Time",
                 "Total Time",
                 "Subs Count",
@@ -156,7 +161,7 @@ namespace ExpDump
                 "Details",
                 "Session"
             ));
-            foreach (var key in shootings.Keys.OrderBy(key => key))
+            foreach (var key in shootings.Keys.OrderBy(key => key).OrderBy(key => shootings[key].StartDateTime))
             {
                 var k = ShootingKey.FromString(key);
                 var shootingInfo = shootings[key];
@@ -172,7 +177,9 @@ namespace ExpDump
                         k.Telescope,
                         NormalizeCamera(k.Camera),
                         k.Filter,
+                        shootingInfo.StartDateTime.ToString("yyyy-MM-dd"),
                         shootingInfo.StartDateTime.ToString("H:mm"), //shootingInfo.StartDateTime.ToString("yyyy-MM-dd H:mm"),
+                        shootingInfo.EndDateTime.ToString("yyyy-MM-dd"),
                         shootingInfo.EndDateTime.ToString("H:mm"), //shootingInfo.EndDateTime.ToString("yyyy-MM-dd H:mm"),
                                                                    //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
                         shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2"),
