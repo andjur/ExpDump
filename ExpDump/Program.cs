@@ -169,6 +169,7 @@ namespace ExpDump
                 var shootingHours = shootingSeconds / 3600;
                 var shootingMinutesFracion = (shootingSeconds - shootingHours * 3600) / 60;
                 var idleTimeSeconds = (shootingInfo.EndDateTime - shootingInfo.StartDateTime).TotalSeconds - shootingSeconds;
+                var integrationTimeFormated = TimeSpan.FromSeconds(shootingSeconds).ToString(@"h\:mm\:ss");
                 //Console.WriteLine(
                 sb.AppendLine(
                     String.Join(sbSep,
@@ -181,14 +182,14 @@ namespace ExpDump
                         shootingInfo.StartDateTime.ToString("H:mm"), //shootingInfo.StartDateTime.ToString("yyyy-MM-dd H:mm"),
                         shootingInfo.EndDateTime.ToString("yyyy-MM-dd"),
                         shootingInfo.EndDateTime.ToString("H:mm"), //shootingInfo.EndDateTime.ToString("yyyy-MM-dd H:mm"),
-                                                                   //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
-                        shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2"),
+                        //"idle: "+(idleTimeSeconds/60).ToString("N1")+" minutes",
+                        integrationTimeFormated,
                         shootingInfo.SubsCount.ToString(),
                         k.ExposureDurationStr,
                         String.Join(" ",
                             k.Filter,
                             shootingInfo.SubsCount.ToString() + "x" + k.ExposureDurationStr,
-                            "(" + shootingHours.ToString() + ":" + shootingMinutesFracion.ToString("D2") + ")"
+                            "(" + integrationTimeFormated + ")"
                         ),
                         k.Session
                     )
