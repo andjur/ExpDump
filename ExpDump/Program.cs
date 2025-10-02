@@ -169,7 +169,7 @@ namespace ExpDump
                 var shootingHours = shootingSeconds / 3600;
                 var shootingMinutesFracion = (shootingSeconds - shootingHours * 3600) / 60;
                 var idleTimeSeconds = (shootingInfo.EndDateTime - shootingInfo.StartDateTime).TotalSeconds - shootingSeconds;
-                var integrationTimeFormated = TimeSpan.FromSeconds(shootingSeconds).ToString(@"h\:mm\:ss");
+                var integrationTimeFormated = TimeSpan.FromSeconds(shootingSeconds).ToString(@"h\:mm");
                 //Console.WriteLine(
                 sb.AppendLine(
                     String.Join(sbSep,
