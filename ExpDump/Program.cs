@@ -227,11 +227,19 @@ namespace ExpDump
         {
             var res = "unknown_telescope";
 
-            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|AllSky)");
+            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|AllSky|so\s+ZWO\s+Guide\s*scope)");
             var match = r.Match(path);
             if (match.Success)
             {
                 res = match.Groups["Telescope"].Value;
+
+                // normalize ZWO Guide Scope
+                if (res.ToUpper().Contains("ZWO") && 
+                    res.ToLower().Contains("guide") &&
+                    res.ToLower().Contains("scope"))
+                {
+                    res = "ZWO Guide Scope";
+                }
             }
             else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
                 res = "C9.25"; // SPECIAL CASE: before 2024-12-25 only C9.25 was available
