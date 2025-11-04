@@ -359,7 +359,7 @@ namespace ExpDump
                 if (secondsMatch.Success)
                 {
                     if (int.TryParse(secondsMatch.Groups["seconds"].Value, out int res))
-                        return res;
+                        return res * 1000; // convert seconds to milliseconds
                 }
 
                 var millisecondsRegex = new Regex(@"(?<milliseconds>\d+)ms");
