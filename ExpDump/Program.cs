@@ -201,6 +201,19 @@ namespace ExpDump
 
         private static string NormalizeObjectName(string name)
         {
+            switch (name)
+            {
+                case "Moon":
+                    return name;
+
+                case "C-2021 S3": return "C-2021 S3 (PANSTARRS)";
+                case "C-2023 A3": return "C-2023 A3 (Tsuchinshan-ATLAS)";
+                case "C-2025 F2": return "C-2025 F2 (SWAN)";
+                case "C-2025 K1": return "C-2025 K1 (ATLAS)";
+                case "C-2025 A6": return "C-2025 A6 (Lemmon)";
+                case "C-2025 R2": return "C-2025 R2 (SWAN)";
+            }
+
             // SPECIAL CASE: Caldwell catalog object -> normalize name (special treatment to avoid confusion with "C" comets)
             var caldwellRegex = new Regex(@"^(?<CaldwellObject>C)\s*?(?<CatalogNumber>\d+)$", RegexOptions.IgnoreCase);
             var caldwellMatch = caldwellRegex.Match(name);
