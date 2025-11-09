@@ -240,7 +240,7 @@ namespace ExpDump
         {
             var res = "unknown_telescope";
 
-            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|AllSky|so\s+ZWO\s+Guide\s*scope)");
+            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|Vixen\sSirius\s40L|AllSky|so\s+ZWO\s+Guide\s*scope)");
             var match = r.Match(path);
             if (match.Success)
             {
