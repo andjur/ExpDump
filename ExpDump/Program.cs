@@ -212,6 +212,7 @@ namespace ExpDump
                 case "C-2025 K1": return "C-2025 K1 (ATLAS)";
                 case "C-2025 A6": return "C-2025 A6 (Lemmon)";
                 case "C-2025 R2": return "C-2025 R2 (SWAN)";
+                case "3I": return "3I (ATLAS)"; // alternative name: C/2025 N1 (ATLAS)
             }
 
             // SPECIAL CASE: Caldwell catalog object -> normalize name (special treatment to avoid confusion with "C" comets)
@@ -290,9 +291,10 @@ namespace ExpDump
             var res = camera;
             switch (camera)
             {
-                case "533MC":
-                case "2600MM":
                 case "585MM":
+                case "533MC":
+                case "2600MC":
+                case "2600MM":
                     res += "-Pro";
                     break;
                 case "174MM":
