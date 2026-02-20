@@ -254,6 +254,12 @@ namespace ExpDump
                 {
                     res = "ZWO Guide Scope";
                 }
+
+                // normalize Samyang 135mm F2 Lens
+                if (res.ToUpper().Contains("Samyang"))
+                {
+                    res = "SY135";
+                }
             }
             else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
                 res = "C9.25"; // SPECIAL CASE: before 2024-12-25 only C9.25 was available
