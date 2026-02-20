@@ -260,6 +260,12 @@ namespace ExpDump
                 {
                     res = "SY135";
                 }
+
+                // normalize Sky-Watcher Evolux 82/530 ED 
+                if (res.ToUpper().Contains("Evolux"))
+                {
+                    res = "Evolux82";
+                }
             }
             else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
                 res = "C9.25"; // SPECIAL CASE: before 2024-12-25 only C9.25 was available
