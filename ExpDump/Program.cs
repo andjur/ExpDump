@@ -256,13 +256,13 @@ namespace ExpDump
                 }
 
                 // normalize Samyang 135mm F2 Lens
-                if (res.ToUpper().Contains("Samyang"))
+                if (res.ToLower().Contains("samyang"))
                 {
                     res = "SY135";
                 }
 
                 // normalize Sky-Watcher Evolux 82/530 ED 
-                if (res.ToUpper().Contains("Evolux"))
+                if (res.ToLower().Contains("evolux"))
                 {
                     res = "Evolux82";
                 }
