@@ -101,7 +101,7 @@ namespace ExpDump
                         ExposureDurationStr = match.Groups["ExposureDuration"].Value.Replace(".0ms", "ms").Replace(".0s", "s"),
                         Camera = match.Groups["Camera"].Value,
                         ExposureEndDateTimeStr = match.Groups["ExposureEndDateTime"].Value,
-                        Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : match.Groups["Filter"].Value,
+                        Filter = String.IsNullOrEmpty(match.Groups["Filter"].Value) ? "unknown_filter" : NormalizeFilter(match.Groups["Filter"].Value),
                         Telescope = DetectTelescope(match.Groups["Path"].Value, match.Groups["ExposureEndDateTime"].Value),
                         Session = GetSession(match.Groups["Path"].Value),
                     };
@@ -235,6 +235,19 @@ namespace ExpDump
 
             // unrecognized object -> keep original name
             return name;
+        }
+
+        private static string NormalizeFilter(string filter)
+        {
+            switch (filter.ToLower())
+            {
+                case "uviri":
+                case "uvirint":
+                    return "UVIRint";
+            }
+
+            // unrecognized filter -> keep original
+            return filter;
         }
 
         private static string DetectTelescope(string path, string exposureEndDateTime)
