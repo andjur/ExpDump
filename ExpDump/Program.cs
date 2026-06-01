@@ -254,7 +254,7 @@ namespace ExpDump
         {
             var res = "unknown_telescope";
 
-            var r = new Regex(@"(?<Telescope>C9\.25|SQA55|Samyang|Vixen\sSirius\s40L|AllSky|so\s+ZWO\s+Guide\s*scope)");
+            var r = new Regex(@"(?<Telescope>C9\.25|Evolux|SQA55|Samyang|Vixen\sSirius\s40L|AllSky|so\s+ZWO\s+Guide\s*scope)");
             var match = r.Match(path);
             if (match.Success)
             {
@@ -283,7 +283,7 @@ namespace ExpDump
             else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
                 res = "C9.25"; // SPECIAL CASE: before 2024-12-25 only C9.25 was available
 
-            r = new Regex(@"(?<Reducer>Hyperstar|0\.7x)", RegexOptions.IgnoreCase);
+            r = new Regex(@"(?<Reducer>Hyperstar|0\.7x|0\.9x)", RegexOptions.IgnoreCase);
             match = r.Match(path);
             if (match.Success)
             {
