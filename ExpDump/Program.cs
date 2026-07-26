@@ -254,7 +254,7 @@ namespace ExpDump
         {
             var res = "unknown_telescope";
 
-            var r = new Regex(@"(?<Telescope>C9\.25|Evolux|SQA55|Samyang|Vixen\sSirius\s40L|AllSky|so\s+ZWO\s+Guide\s*scope)");
+            var r = new Regex(@"(?<Telescope>C9\.25|Esprit|Evolux|SQA55|Samyang|Vixen\sSirius\s40L|AllSky|so\s+ZWO\s+Guide\s*scope)");
             var match = r.Match(path);
             if (match.Success)
             {
@@ -278,6 +278,12 @@ namespace ExpDump
                 if (res.ToLower().Contains("evolux"))
                 {
                     res = "Evolux82";
+                }
+
+                // normalize Sky-Watcher Esprit 120/840 ED 
+                if (res.ToLower().Contains("esprit"))
+                {
+                    res = "Esprit120";
                 }
             }
             else if (SubInfo.ExtractExposureDateTime(exposureEndDateTime) < new DateTime(2024, 12, 25))
