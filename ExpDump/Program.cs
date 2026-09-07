@@ -7,6 +7,8 @@ namespace ExpDump
 {
     internal class Program
     {
+        private const string CsvHeader = "Normalized Date;Object;Telescope;Camera;Filter;Start Date;Start Time;End Date;End Time;Total Time;Subs Count;Sub Duration;Details;Session";
+
         static void Main(string[] args)
         {
             try
@@ -89,6 +91,17 @@ namespace ExpDump
             var shootings = new Dictionary<string, ShootingInfo>(); // TKey is shooting (i.e. date/object/telescope/camera/filter/exp_duration combination)
             foreach (string fileName in fileNames)
             {
+                //if (fileName.Contains("__ExpDump")) { var x = 1; }
+                var regexExpDumpCsv = new Regex(@"(?<Path>.*\\)__ExpDump(?<Year>\d{4})\.csv");
+                var matchExpDumpCsv = regexExpDumpCsv.Match(fileName);
+                if (matchExpDumpCsv.Success)
+                {
+                    // we have an ExpDumpYYYY.csv file - append it to built shootings dictionary
+                    Console.Write("Importing historical CSV file \"" + fileName + "\"...");
+                    ImportHistoricalCsv(fileName, shootings);
+                    Console.WriteLine(" Done.");
+                }
+
                 var r = new Regex(@"(?<Path>.*\\)Light_(?<ObjectName>.*?)_.*?(?<ExposureDuration>.*?s)_.+?_(?<Camera>.+?)_.*(?<ExposureEndDateTime>\d{4}\d{2}\d{2}-\d{2}\d{2}\d{2}).*?_(filter_(?<Filter>.+?)_)?\d\d\d\d");
                 var match = r.Match(fileName);
                 if (match.Success)
@@ -197,6 +210,185 @@ namespace ExpDump
             }
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Imports rows produced by ExpDump in previous years and adds them directly
+        /// to the same shooting dictionary used for FITS files.
+        ///
+        /// The CSV is already aggregated, therefore Subs Count is added as a block
+        /// instead of importing individual exposures.
+        /// </summary>
+        private static int ImportHistoricalCsv(string fileName, Dictionary<string, ShootingInfo> shootings)
+        {
+            int importedRows = 0;
+            int skippedRows = 0;
+
+            using var reader = new StreamReader(fileName, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+
+            var header = reader.ReadLine();
+            if (header == null)
+                throw new Exception("Historical CSV file is empty: " + fileName);
+
+            if (!string.Equals(header.Trim(), CsvHeader, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception(
+                    "Unsupported historical CSV format in \"" + fileName + "\". " +
+                    "Expected header: " + CsvHeader);
+            }
+
+            string? line;
+            int lineNumber = 1;
+            while ((line = reader.ReadLine()) != null)
+            {
+                lineNumber++;
+
+                if (String.IsNullOrWhiteSpace(line))
+                    continue;
+
+                try
+                {
+                    var columns = SplitCsvLine(line);
+                    if (columns.Count < 14)
+                        throw new FormatException("Expected at least 14 columns, found " + columns.Count + ".");
+
+                    var normalizedDate = DateOnly.ParseExact(columns[0].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
+                    var objectName = columns[1].Trim();
+                    var telescope = columns[2].Trim();
+                    var camera = columns[3].Trim();
+                    var filter = columns[4].Trim();
+                    var startDateTime = ParseCsvDateTime(columns[5], columns[6]);
+                    var endDateTime = ParseCsvDateTime(columns[7], columns[8]);
+                    var subsCount = int.Parse(columns[10].Trim(), CultureInfo.InvariantCulture);
+                    var exposureDurationStr = NormalizeExposureDuration(columns[11].Trim());
+                    var session = columns[13].Trim();
+
+                    if (subsCount <= 0)
+                        throw new FormatException("Subs Count must be greater than zero.");
+
+                    var shootingKey = new ShootingKey()
+                    {
+                        NormalizedExposureDate = normalizedDate,
+                        ObjectName = objectName,
+                        Camera = camera,
+                        Filter = filter,
+                        ExposureDurationStr = exposureDurationStr,
+                        Telescope = telescope,
+                        Session = session,
+                    };
+
+                    AddShooting(shootings, shootingKey, startDateTime, endDateTime, subsCount);
+                    importedRows++;
+                }
+                catch (Exception ex)
+                {
+                    skippedRows++;
+                    Console.WriteLine("WARNING: Could not import " + fileName + ":" + lineNumber + ": " + ex.Message);
+                }
+            }
+
+            if (skippedRows > 0)
+                Console.WriteLine("WARNING: Skipped " + skippedRows + " invalid row(s) in \"" + fileName + "\".");
+
+            return importedRows;
+        }
+
+        private static List<string> SplitCsvLine(string line)
+        {
+            // The current ExpDump CSV uses ';' as delimiter. This parser also handles
+            // quoted fields, so future Details/Session values containing ';' are safe.
+            var result = new List<string>();
+            var current = new StringBuilder();
+            bool quoted = false;
+
+            for (int i = 0; i < line.Length; i++)
+            {
+                char c = line[i];
+
+                if (c == '"')
+                {
+                    if (quoted && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        quoted = !quoted;
+                    }
+                }
+                else if (c == ';' && !quoted)
+                {
+                    result.Add(current.ToString());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(c);
+                }
+            }
+
+            result.Add(current.ToString());
+            return result;
+        }
+
+        private static void AddShooting(
+            Dictionary<string, ShootingInfo> shootings,
+            ShootingKey shootingKey,
+            DateTime startDateTime,
+            DateTime endDateTime,
+            int subsCount)
+        {
+            var key = shootingKey.ToString();
+
+            if (shootings.TryGetValue(key, out var shootingInfo))
+            {
+                shootingInfo.SubsCount += subsCount;
+                if (startDateTime < shootingInfo.StartDateTime)
+                    shootingInfo.StartDateTime = startDateTime;
+                if (endDateTime > shootingInfo.EndDateTime)
+                    shootingInfo.EndDateTime = endDateTime;
+            }
+            else
+            {
+                shootings[key] = new ShootingInfo()
+                {
+                    SubsCount = subsCount,
+                    StartDateTime = startDateTime,
+                    EndDateTime = endDateTime,
+                };
+            }
+        }
+
+        private static DateTime ParseCsvDateTime(string date, string time)
+        {
+            var value = date.Trim() + " " + time.Trim();
+            string[] formats =
+            {
+                "yyyy-MM-dd H:mm",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd H:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd H:mm:ss.fff",
+                "yyyy-MM-dd HH:mm:ss.fff",
+            };
+
+            if (DateTime.TryParseExact(value, formats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var result))
+                return result;
+
+            throw new FormatException("Invalid date/time: \"" + value + "\".");
+        }
+
+        private static string NormalizeExposureDuration(string duration)
+        {
+            duration = duration.Trim();
+
+            if (duration.EndsWith(".0ms", StringComparison.OrdinalIgnoreCase))
+                duration = duration[..^4] + "ms";
+            else if (duration.EndsWith(".0s", StringComparison.OrdinalIgnoreCase))
+                duration = duration[..^3] + "s";
+
+            return duration;
         }
 
         private static string NormalizeObjectName(string name)
