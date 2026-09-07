@@ -7,7 +7,26 @@ namespace ExpDump
 {
     internal class Program
     {
-        private const string CsvHeader = "Normalized Date;Object;Telescope;Camera;Filter;Start Date;Start Time;End Date;End Time;Total Time;Subs Count;Sub Duration;Details;Session";
+        private static string[] _csvColumns = {
+            "Normalized Date",
+            "Object",
+            "Telescope",
+            "Camera",
+            "Filter",
+            "Start Date",
+            "Start Time",
+            "End Date",
+            "End Time",
+            "Total Time",
+            "Subs Count",
+            "Sub Duration",
+            "Details",
+            "Session"
+        };
+
+        private const string _csvSeparator = ";";
+
+        private static string _csvHeader => String.Join(_csvSeparator, _csvColumns);
 
         static void Main(string[] args)
         {
@@ -157,23 +176,7 @@ namespace ExpDump
             }
 
             var sb = new StringBuilder();
-            var sbSep = ";";
-            sb.AppendLine(String.Join(sbSep,
-                "Normalized Date",
-                "Object",
-                "Telescope",
-                "Camera",
-                "Filter",
-                "Start Date",
-                "Start Time",
-                "End Date",
-                "End Time",
-                "Total Time",
-                "Subs Count",
-                "Sub Duration",
-                "Details",
-                "Session"
-            ));
+            sb.AppendLine(_csvHeader);
             foreach (var key in shootings.Keys.OrderBy(key => key).OrderBy(key => shootings[key].StartDateTime))
             {
                 var k = ShootingKey.FromString(key);
@@ -185,7 +188,7 @@ namespace ExpDump
                 var integrationTimeFormated = 
                 //Console.WriteLine(
                 sb.AppendLine(
-                    String.Join(sbSep,
+                    String.Join(_csvSeparator,
                         k.NormalizedExposureDate.ToString("yyyy-MM-dd"),
                         k.ObjectName,
                         k.Telescope,
@@ -230,11 +233,11 @@ namespace ExpDump
             if (header == null)
                 throw new Exception("Historical CSV file is empty: " + fileName);
 
-            if (!string.Equals(header.Trim(), CsvHeader, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(header.Trim(), _csvHeader, StringComparison.OrdinalIgnoreCase))
             {
                 throw new Exception(
                     "Unsupported historical CSV format in \"" + fileName + "\". " +
-                    "Expected header: " + CsvHeader);
+                    "Expected header: " + _csvHeader);
             }
 
             string? line;
