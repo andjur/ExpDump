@@ -256,7 +256,7 @@ namespace ExpDump
                         throw new FormatException("Expected at least 14 columns, found " + columns.Count + ".");
 
                     var normalizedDate = DateOnly.ParseExact(columns[0].Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture);
-                    var objectName = columns[1].Trim();
+                    var objectName = AppendWellKnownName(columns[1].Trim());
                     var telescope = columns[2].Trim();
                     var camera = columns[3].Trim();
                     var filter = columns[4].Trim();
@@ -426,9 +426,36 @@ namespace ExpDump
             var r = new Regex(@"^(?<Catalog>M|NGC|IC|LDN|LBN|SH)\s*(?<CatalogNumber>.+)", RegexOptions.IgnoreCase);
             var match = r.Match(name);
             if (match.Success)
-                return match.Groups["Catalog"].Value.ToUpper() + " " + match.Groups["CatalogNumber"].Value;
+            {
+                var normalizedName = match.Groups["Catalog"].Value.ToUpper() + " " + match.Groups["CatalogNumber"].Value;
+                var normalizedNameWithWellKnownName = AppendWellKnownName(normalizedName);
+                return normalizedNameWithWellKnownName;
+            }
 
             // unrecognized object -> keep original name
+            return name;
+        }
+
+        private static string AppendWellKnownName(string name)
+        {
+            var wellKnownName = name.ToUpper() switch
+            {
+                "IC 5070" => "Pelican Nebula",
+                
+                "M 51" => "Whirlpool Galaxy",
+                
+                "NGC 6946" => "Fireworks Galaxy",
+                "NGC 7479" => "Superman Galaxy",
+                
+                "SH 2-101" => "Tulip Nebula",
+                "SH 2-114" => "Flying Dragon Nebula",
+                "SH 2-142" => "Wizard Nebula",
+                _ => String.Empty,
+            };
+
+            if (!String.IsNullOrWhiteSpace(wellKnownName))
+                return name + " - " + wellKnownName;
+
             return name;
         }
 
