@@ -441,8 +441,11 @@ namespace ExpDump
             var wellKnownName = name.ToUpper() switch
             {
                 "IC 5070" => "Pelican Nebula",
-                
+                "IC 1805" => "Heart Nebula",
+                "IC 2118" => "Witch Head Nebula",
+
                 "M 51" => "Whirlpool Galaxy",
+                "M 78" => "Casper the Friendly Ghost Nebula",
                 
                 "NGC 6946" => "Fireworks Galaxy",
                 "NGC 7479" => "Superman Galaxy",
