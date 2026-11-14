@@ -88,10 +88,8 @@ namespace ExpDump
                 {
                     Console.WriteLine("Processing " + files.Count().ToString() + " file(s)...");
                     var res = ProcessFileNamesList(files);
-                    var resultsFile = Path.GetFullPath("__ExpDump_" + Timestamp() + ".csv");
-                    Console.WriteLine("Writing results to \"" + resultsFile + "\"...");
-                    File.WriteAllText(resultsFile, res);
-                    Console.WriteLine("Done writing results to \"" + resultsFile + "\".");
+                    SaveResultsToFile(res, includeTimestamp: true);
+                    SaveResultsToFile(res, updateCloud: true);
                     Console.WriteLine("Done processing " + files.Count().ToString() + " file(s).");
                 }
             }
@@ -103,6 +101,34 @@ namespace ExpDump
             Console.WriteLine();
             Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
+        }
+
+        private static void SaveResultsToFile(string res, bool includeTimestamp = true, bool updateCloud = false)
+        {
+            var resultsFile = updateCloud ?
+                @"c:\Users\and\MEGA\ASTRO\ExpDump\__ExpDump.csv"
+                :
+                Path.GetFullPath(
+                    "__ExpDump"
+                    + (includeTimestamp ? "_" + Timestamp() : String.Empty)
+                    + ".csv"
+                )
+            ;
+
+            if (!includeTimestamp && File.Exists(resultsFile))
+            {
+                Console.WriteLine("WARNING: Skipped writing results to \"" + resultsFile + "\". File already exists.");
+                return;
+            }
+
+            if (updateCloud && File.Exists(resultsFile))
+            {
+                Console.WriteLine("WARNING: Cloud update requested. Overwriting existing results in \"" + resultsFile + "\".");
+            }
+
+            Console.WriteLine("Writing results to \"" + resultsFile + "\"...");
+            File.WriteAllText(resultsFile, res);
+            Console.WriteLine("Done writing results to \"" + resultsFile + "\".");
         }
 
         private static string ProcessFileNamesList(IEnumerable<string> fileNames)
