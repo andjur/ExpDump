@@ -484,7 +484,7 @@ namespace ExpDump
             };
 
             if (!String.IsNullOrWhiteSpace(wellKnownName))
-                return name + " - " + wellKnownName;
+                return name + " (" + wellKnownName + ")";
 
             return name;
         }
