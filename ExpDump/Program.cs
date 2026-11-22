@@ -474,6 +474,7 @@ namespace ExpDump
                 "M 78" => "Casper the Friendly Ghost Nebula",
                 
                 "NGC 6946" => "Fireworks Galaxy",
+                "NGC 7023" => "Iris Nebula",
                 "NGC 7479" => "Superman Galaxy",
                 
                 "SH 2-101" => "Tulip Nebula",
